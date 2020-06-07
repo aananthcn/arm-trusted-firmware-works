@@ -1,0 +1,164 @@
+Raspberry Pi3 - configuration
+=============================
+https://www.raspberrypi.org/documentation/configuration/config-txt/
+https://www.raspberrypi.org/documentation/configuration/config-txt/boot.md
+
+
+Compiler
+========
+Download "gcc-arm-9.2-2019.12-x86_64-aarch64-none-linux-gnu.tar.xz" from https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-a/downloads
+
+
+
+RPi3 TF-A 64-bit Build Instructions
+===================================
+
+Step 1: Build the bootstrap -- NOT REQUIRED FOR PCSI SUPPORTED KERNEL
+--------------------------
+git clone https://github.com/AntonioND/rpi3-arm-tf-bootstrap.git
+cd rpi3-arm-tf-bootstrap/aarch64
+export CROSS_COMPILE_AARCH64=/opt/tools/aarch64-none-linux/bin/aarch64-none-linux-gnu- 
+./build.sh
+
+Note: This will generate the file el2-bootstrap.bin that can be passed to the Trusted Firmware-A build system as BL33
+
+
+Step 2: Patch kernel for PCSI and build for 64-bit
+--------------------------------------------------
+cd -
+git clone --depth=1 -b rpi-4.18.y https://github.com/raspberrypi/linux
+cd linux
+git am rpi3-arm-tf-bootstrap/0001-rpi3-Enable-PSCI-support.patch
+
+make ARCH=arm64 CROSS_COMPILE=/opt/tools/aarch64-none-linux/bin/aarch64-none-linux-gnu- bcmrpi3_defconfig
+make -j 6 ARCH=arm64 CROSS_COMPILE=/opt/tools/aarch64-none-linux/bin/aarch64-none-linux-gnu-
+cp arch/arm64/boot/Image <mount-point>/boot/kernel8.img
+cp arch/arm64/boot/dts/broadcom/bcm2710-rpi-3-b.dtb <mount-point>/boot/
+cp arch/arm64/boot/dts/broadcom/bcm2710-rpi-3-b-plus.dtb <mount-point>/boot/
+make ARCH=arm64 CROSS_COMPILE=/opt/tools/aarch64-none-linux/bin/aarch64-none-linux-gnu- INSTALL_MOD_PATH=<mount-point>/rootfs modules_install
+
+
+Step 3: Building the firmware (64 bit) for kernels that support PSCI
+--------------------------------------------------------------------
+cd -
+git clone https://review.trustedfirmware.org/TF-A/trusted-firmware-a
+cd trusted-firmware-a
+CROSS_COMPILE=/opt/tools/aarch64-none-linux/bin/aarch64-none-linux-gnu- \
+  make PLAT=rpi3             \
+  PRELOADED_BL33_BASE=0x02000000                              \
+  RPI3_PRELOADED_DTB_BASE=0x01000000                          \
+  RPI3_DIRECT_LINUX_BOOT=1
+
+
+For debugging
+.............
+CROSS_COMPILE=/opt/tools/aarch64-none-linux/bin/aarch64-none-linux-gnu- \
+  make PLAT=rpi3             \
+  PRELOADED_BL33_BASE=0x02000000                              \
+  RPI3_PRELOADED_DTB_BASE=0x01000000                          \
+  RPI3_DIRECT_LINUX_BOOT=1 CFLAGS='-O1' DEBUG=1 V=1
+
+
+Step 4: Setup SD Card
+---------------------
+cp build/rpi3/release/armstub8.bin <mount-point>/boot/
+rename <mount-point>/kernel7* to different name 
+edit <mount-point>/config.txt and add following lines in that file:
+  enable_uart=1
+  kernel_address=0x02000000
+  device_tree_address=0x01000000
+  arm_64bit=1
+  armstub=armstub8.bin
+sync
+
+
+Unmount, insert the SD Card to RPi3 and power on, it should boot using the stub-trusted-firmware.
+
+
+Understanding the Images
+========================
+
+<base>/trusted-firmware-a/plat/rpi/rpi3/platform.mk defines how armstub8.bin is created!
+
+armstub8.bin 	- Padded BL1 + FIP
+BL1 		- first stage bootloader
+Padded BL1	- 128k (padded with 0's)
+FIP 		- Firmware Image Package
+BL31 		- Its primary purpose is to handle transitions between the normal and secure world.
+BL32 		- This is typically a TEE or Trusted OS [Not built for RPI3]
+BL33 		- This is the bootloader that loads the normal OS (u-boot or UEFI) [Not built for RPI3]
+
+
+Rule to make FIP:
+${BUILD_PLAT}/${FIP_NAME}: ${FIP_DEPS} ${FIPTOOL}
+	${Q}${FIPTOOL} create ${FIP_ARGS} $@
+
+BUILD_PLAT 	- ${BUILD_BASE}/${PLAT}/${BUILD_TYPE}
+BUILD_BASE 	- ./build
+PLAT		- rpi3 (given as cmdline argument)
+BUILD_TYPE	- release
+
+FIP_NAME	- fip.bin
+FIP_DEPS	- certificates, enctool, sp
+FIPTOOL		- ${FIPTOOLPATH}/fiptool${BIN_EXT}
+FIPTOOLPATH	- tools/fiptool
+
+
+FIP_ARGS	- refer details below
+
+FIP_ARGS += --align ${FIP_ALIGN}
+TOOL_ADD_IMG -> TOOL_ADD_IMG_PAYLOAD -> TOOL_ADD_PAYLOAD
+ifeq (${NEED_BL31},yes)
+BL31_SOURCES += ${SPD_SOURCES}
+# Sort BL31 source files to remove duplicates
+BL31_SOURCES := $(sort ${BL31_SOURCES})
+ifneq (${DECRYPTION_SUPPORT},none)
+$(if ${BL31}, $(eval $(call TOOL_ADD_IMG,bl31,--soc-fw,,$(ENCRYPT_BL31))),\
+	$(eval $(call MAKE_BL,31,soc-fw,,$(ENCRYPT_BL31))))
+else
+$(if ${BL31}, $(eval $(call TOOL_ADD_IMG,bl31,--soc-fw)),\
+	$(eval $(call MAKE_BL,31,soc-fw)))
+endif
+endif
+
+
+# TOOL_ADD_PAYLOAD appends the command line arguments required by fiptool to
+# package a new payload and/or by cert_create to generate certificate.
+# Optionally, it adds the dependency on this payload
+#   $(1) = payload filename (i.e. bl31.bin)
+#   $(2) = command line option for the specified payload (i.e. --soc-fw)
+#   $(3) = tool target dependency (optional) (ex. build/fvp/release/bl31.bin)
+#   $(4) = FIP prefix (optional) (if FWU_, target is fwu_fip instead of fip)
+#   $(5) = encrypted payload (optional) (ex. build/fvp/release/bl31_enc.bin)
+ifneq ($(5),)
+    $(4)FIP_ARGS += $(2) $(5)
+    $(if $(3),$(4)CRT_DEPS += $(1))
+else
+    $(4)FIP_ARGS += $(2) $(1)
+    $(if $(3),$(4)CRT_DEPS += $(3))
+endif
+
+
+sp: $(SPTOOL) $(DTBS) $(BUILD_PLAT)/sp_gen.mk
+$(BUILD_PLAT)/sp_gen.mk: ${SP_MK_GEN} ${SP_LAYOUT_FILE} | ${BUILD_PLAT}
+SP_MK_GEN		?=	${SPTOOLPATH}/sp_mk_generator.py
+A typical SP_LAYOUT_FILE file will look like
+{
+        "SP1" : {
+                "image": "sp1.bin",
+                "pm": "test/sp1.dts"
+        },
+
+        "SP2" : {
+                "image": "sp2.bin",
+                "pm": "test/sp2.dts"
+        }
+
+        ...
+}
+
+
+certificates: ${CRT_DEPS} ${CRTTOOL}
+
+ENCTOOLPATH		?=	tools/encrypt_fw
+ENCTOOL			?=	${ENCTOOLPATH}/encrypt_fw${BIN_EXT
