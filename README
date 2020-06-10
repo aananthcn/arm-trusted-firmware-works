@@ -166,7 +166,7 @@ ENCTOOL			?=	${ENCTOOLPATH}/encrypt_fw${BIN_EXT
 
 
 Runtime Services - RPI3
-================
+=======================
 arm_arch_svc_setup.c
 
 DECLARE_RT_SVC(
@@ -190,5 +190,14 @@ DECLARE_RT_SVC(
 		std_svc_smc_handler
 )
 
-
+#define DECLARE_RT_SVC(_name, _start, _end, _type, _setup, _smch)	\
+	static const rt_svc_desc_t __svc_desc_ ## _name			\
+		__section("rt_svc_descs") __used = {			\
+			.start_oen = (_start),				\
+			.end_oen = (_end),				\
+			.call_type = (_type),				\
+			.name = #_name,					\
+			.init = (_setup),				\
+			.handle = (_smch)				\
+		
 
