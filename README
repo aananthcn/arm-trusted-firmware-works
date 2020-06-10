@@ -162,3 +162,33 @@ certificates: ${CRT_DEPS} ${CRTTOOL}
 
 ENCTOOLPATH		?=	tools/encrypt_fw
 ENCTOOL			?=	${ENCTOOLPATH}/encrypt_fw${BIN_EXT
+
+
+
+Runtime Services - RPI3
+================
+arm_arch_svc_setup.c
+
+DECLARE_RT_SVC(
+		arm_arch_svc,
+		OEN_ARM_START,
+		OEN_ARM_END,
+		SMC_TYPE_FAST,
+		NULL,
+		arm_arch_svc_smc_handler
+)
+
+
+std_svc_setup.c
+
+DECLARE_RT_SVC(
+		std_svc,
+		OEN_STD_START,
+		OEN_STD_END,
+		SMC_TYPE_FAST,
+		std_svc_setup,
+		std_svc_smc_handler
+)
+
+
+
