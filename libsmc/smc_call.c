@@ -72,14 +72,14 @@ int smc64(smc_t type, smc_serv_t servId, uint16_t funId, int argc, uint64_t *arg
     }
 
     /* AArch64 assembly instructions - before SMC call */
-    asm("MOV X0, %[x_0]" :: [x_0] "r" (x0_reg));
-    asm("MOV X1, %[x_1]" :: [x_1] "r" (smc_args[0]));
-    asm("MOV X2, %[x_2]" :: [x_2] "r" (smc_args[1]));
-    asm("MOV X3, %[x_3]" :: [x_3] "r" (smc_args[2]));
-    asm("MOV X4, %[x_4]" :: [x_4] "r" (smc_args[3]));
-    asm("MOV X5, %[x_5]" :: [x_5] "r" (smc_args[4]));
-    asm("MOV X6, %[x_6]" :: [x_6] "r" (x6_reg));
     asm("MOV X7, %[x_7]" :: [x_7] "r" (x7_reg));
+    asm("MOV X6, %[x_6]" :: [x_6] "r" (x6_reg));
+    asm("MOV X5, %[x_5]" :: [x_5] "r" (smc_args[4]));
+    asm("MOV X4, %[x_4]" :: [x_4] "r" (smc_args[3]));
+    asm("MOV X3, %[x_3]" :: [x_3] "r" (smc_args[2]));
+    asm("MOV X2, %[x_2]" :: [x_2] "r" (smc_args[1]));
+    asm("MOV X1, %[x_1]" :: [x_1] "r" (smc_args[0]));
+    asm("MOV X0, %[x_0]" :: [x_0] "r" (x0_reg));
 
     /* The SMC call */
     asm("SMC #0");
