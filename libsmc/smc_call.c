@@ -23,8 +23,8 @@
  * clientId     - Optional, passed as bits[15:0] to W7
  * osId         - Optional, passed as bits[31:16] to W7
  */
-uint64_t *smc64(smc_t type, smc_serv_t servId, uint16_t funId, int argc,
-                uint64_t *argv, uint16_t sessId, uint16_t clientId, uint16_t osId)
+int smc64(smc_t type, smc_serv_t servId, uint16_t funId, int argc, uint64_t *argv,
+          uint16_t sessId, uint16_t clientId, uint16_t osId, uint64_t retv[])
 {
     uint64_t x0_reg, x6_reg, x7_reg;
     uint64_t smc_args[SMC64_ARG_LEN-1];
@@ -34,8 +34,24 @@ uint64_t *smc64(smc_t type, smc_serv_t servId, uint16_t funId, int argc,
     if (argc > SMC64_ARG_LEN) {
         printf("Error: %d arguments passed, %s() can take upto %d arguments only!",
                argc, __func__, SMC64_ARG_LEN);
-        return NULL;
-    }    
+        return -1;
+    }
+
+    /* check if the return value pointer is valid or not */
+    if (retv == NULL) {
+        printf("Error: return value pointer (last argument) is NULL!\n");
+        return -1;
+    }
+
+    /* check other inputs */
+    if (type >= SMC_TYPE_MAX) {
+        printf("Error: Invalid SMC Call type: %d\n", (int) type);
+        return -1;
+    }
+    if (servId >= SERV_CALL_MAX) {
+        printf("Error: Invalid SMC Service ID: %d\n", (int) type);
+        return -1;
+    }
 
     /* prepare different fields as per SMCCC rules */
     x0_reg = type << 31 | 1 << 30 | (servId & 0xFFFF) << 24 | (funId & 0xFFFF);
@@ -45,7 +61,7 @@ uint64_t *smc64(smc_t type, smc_serv_t servId, uint16_t funId, int argc,
         x6_reg = (uint64_t) sessId;
     x7_reg = ((osId << 16) & 0xFFFF0000) | (0xFFFF & clientId);
 
-    /* prepare arguments to SMC */
+    /* prepare arguments to the SMC call */
     for (int i = 0; i < (SMC64_ARG_LEN-1); ++i) {
         if (i < argc) {
             smc_args[i] = argv[i];
@@ -69,10 +85,10 @@ uint64_t *smc64(smc_t type, smc_serv_t servId, uint16_t funId, int argc,
     asm("SMC #0");
 
     /* AArch64 assembly instructions - after SMC call */
-    asm("MOV %[x_0], X0" : [x_0] "=r" (smc_retv[0]) :);
-    asm("MOV %[x_1], X1" : [x_1] "=r" (smc_args[1]) :);
-    asm("MOV %[x_2], X2" : [x_2] "=r" (smc_args[2]) :);
-    asm("MOV %[x_3], X3" : [x_3] "=r" (smc_args[3]) :);
+    asm("MOV %[x_0], X0" : [x_0] "=r" (retv[0]) :);
+    asm("MOV %[x_1], X1" : [x_1] "=r" (retv[1]) :);
+    asm("MOV %[x_2], X2" : [x_2] "=r" (retv[2]) :);
+    asm("MOV %[x_3], X3" : [x_3] "=r" (retv[3]) :);
 
-    return smc_retv;
+    return 0;
 }

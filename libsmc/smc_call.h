@@ -28,4 +28,8 @@ typedef enum smc_serv_type {
     SERV_CALL_MAX = 64
 } smc_serv_t;
 
+
+int smc64(smc_t type, smc_serv_t servId, uint16_t funId, int argc, uint64_t *argv,
+          uint16_t sessId, uint16_t clientId, uint16_t osId, uint64_t retv[]);
+
 #endif
