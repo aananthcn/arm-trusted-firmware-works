@@ -16,6 +16,7 @@ void print_retval(uint64_t *retval) {
     for (int i = 0; i < 4; i++) {
         printf("SMC retval[%d] = 0x%16X\n", i, retval[i]);
     }
+    printf("\n");
 }
 
 void main(void)
