@@ -344,12 +344,12 @@ ssize_t scull_read(struct file *filp, char __user *buf, size_t count,
 }
 
 void print_retval(uint64_t *retval) {
-		int i;
+	int i;
 
-		for (i = 0; i < 4; i++) {
-    	    printk(KERN_NOTICE "SMC retval[%d] = 0x%016X\n", i, retval[i]);
-    	}
-    	printk(KERN_NOTICE "\n");
+	for (i = 0; i < 4; i++) {
+		printk(KERN_NOTICE "SMC retval[%d] = 0x%016llX\n", i, retval[i]);
+	}
+	printk(KERN_NOTICE "\n");
 }
 
 ssize_t scull_write(struct file *filp, const char __user *buf, size_t count,
@@ -370,18 +370,28 @@ ssize_t scull_write(struct file *filp, const char __user *buf, size_t count,
 		/* make a SERV_CALL_ARM_ARCH */
 		smc64(SMC_TYPE_FAST, SERV_CALL_ARM_ARCH, 0, 6, fun_arg, 0, 0, 0, ret_val);
 		print_retval(ret_val);
+		smc32(SMC_TYPE_FAST, SERV_CALL_ARM_ARCH, 0, 6, fun_arg, 0, 0, 0, ret_val);
+		print_retval(ret_val);
 
 		/* make a SERV_CALL_CPU */
 		smc64(SMC_TYPE_FAST, SERV_CALL_CPU, 0, 6, fun_arg, 0, 0, 0, ret_val);
 		print_retval(ret_val);
+		smc32(SMC_TYPE_FAST, SERV_CALL_CPU, 0, 6, fun_arg, 0, 0, 0, ret_val);
+		print_retval(ret_val);
 
+#if 0
 		/* make a SERV_CALL_SIP */
 		smc64(SMC_TYPE_FAST, SERV_CALL_SIP, 0, 6, fun_arg, 0, 0, 0, ret_val);
+		print_retval(ret_val);
+		smc64(SMC_TYPE_YIELDING, SERV_CALL_SIP, 0, 6, fun_arg, 0, 0, 0, ret_val);
 		print_retval(ret_val);
 
 		/* make a SERV_CALL_OEM */
 		smc64(SMC_TYPE_FAST, SERV_CALL_OEM, 0, 6, fun_arg, 0, 0, 0, ret_val);
 		print_retval(ret_val);
+		smc64(SMC_TYPE_YIELDING, SERV_CALL_OEM, 0, 6, fun_arg, 0, 0, 0, ret_val);
+		print_retval(ret_val);
+#endif
 	}
 	/* DIRTY WORK -- PLEASE REMOVE THIS */
 

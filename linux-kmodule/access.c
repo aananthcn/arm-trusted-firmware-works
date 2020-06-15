@@ -28,6 +28,7 @@
 #include <linux/tty.h>
 #include <asm/atomic.h>
 #include <linux/list.h>
+#include <linux/sched/signal.h>
 
 #include "scull.h"        /* local definitions */
 
@@ -95,7 +96,7 @@ struct file_operations scull_sngl_fops = {
 
 static struct scull_dev scull_u_device;
 static int scull_u_count;	/* initialized to 0 by default */
-static uid_t scull_u_owner;	/* initialized to 0 by default */
+//static uid_t scull_u_owner;	/* initialized to 0 by default */
 //static spinlock_t scull_u_lock = SPIN_LOCK_UNLOCKED;
 static struct mutex *u_mutex;
 static uint8_t u_mutex_init_done = 0;
@@ -173,7 +174,7 @@ struct file_operations scull_user_fops = {
 
 static struct scull_dev scull_w_device;
 static int scull_w_count;	/* initialized to 0 by default */
-static uid_t scull_w_owner;	/* initialized to 0 by default */
+//static uid_t scull_w_owner;	/* initialized to 0 by default */
 static DECLARE_WAIT_QUEUE_HEAD(scull_w_wait);
 //static spinlock_t scull_w_lock = SPIN_LOCK_UNLOCKED;
 
@@ -194,9 +195,9 @@ static int scull_w_open(struct inode *inode, struct file *filp)
 	struct scull_dev *dev = &scull_w_device; /* device information */
 
 	//spin_lock(&scull_w_lock);
-	if (u_mutex_init_done == 0) {
+	if (w_mutex_init_done == 0) {
 		mutex_init(w_mutex);
-		u_mutex_init_done = 1;
+		w_mutex_init_done = 1;
 	}
 	mutex_lock(w_mutex);
 	while (! scull_w_available()) {
@@ -309,13 +310,11 @@ static int scull_c_open(struct inode *inode, struct file *filp)
 	struct scull_dev *dev;
 	dev_t key;
 
- #if 0
 	if (!current->signal->tty) { 
 		PDEBUG("Process \"%s\" has no ctl tty\n", current->comm);
 		return -EINVAL;
 	}
 	key = tty_devnum(current->signal->tty);
-#endif
 
 	/* look for a scullc device in the list */
 	//spin_lock(&scull_c_lock);

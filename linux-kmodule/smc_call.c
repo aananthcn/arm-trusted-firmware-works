@@ -25,13 +25,12 @@
  * clientId     - Optional, passed as bits[15:0] to W7
  * osId         - Optional, passed as bits[31:16] to W7
  */
-int smc64(smc_t type, smc_serv_t servId, uint16_t funId, int argc, uint64_t *argv,
+int smc(int bit, smc_t type, smc_serv_t servId, uint16_t funId, int argc, uint64_t *argv,
           uint16_t sessId, uint16_t clientId, uint16_t osId, uint64_t retv[])
 {
     uint64_t x0_reg, x6_reg, x7_reg;
     uint64_t smc_args[SMC64_ARG_LEN-1];
-    static uint64_t smc_retv[4]; /* FIXME */
-    int i;
+    int i, bit_mask;
 
     /* check if users pass arguments without understanding SMCCC rules */
     if (argc > SMC64_ARG_LEN) {
@@ -57,7 +56,8 @@ int smc64(smc_t type, smc_serv_t servId, uint16_t funId, int argc, uint64_t *arg
     }
 
     /* prepare different fields as per SMCCC rules */
-    x0_reg = type << 31 | 1 << 30 | (servId & 0xFFFF) << 24 | (funId & 0xFFFF);
+    bit_mask =  (bit == 64) ? (1 << 30) : 0;
+    x0_reg = type << 31 | bit_mask | (servId & 0xFFFF) << 24 | (funId & 0xFFFF);
     if (argc >= SMC64_ARG_LEN)
         x6_reg = 0;
     else
@@ -73,6 +73,8 @@ int smc64(smc_t type, smc_serv_t servId, uint16_t funId, int argc, uint64_t *arg
             smc_args[i] = 0;
         }
     }
+
+    printk(KERN_NOTICE "x0_reg = 0x%016llX\n", x0_reg);
 
     /* AArch64 assembly instructions - before SMC call */
     asm("MOV X7, %[x_7]" :: [x_7] "r" (x7_reg));
@@ -94,4 +96,16 @@ int smc64(smc_t type, smc_serv_t servId, uint16_t funId, int argc, uint64_t *arg
     asm("MOV %[x_3], X3" : [x_3] "=r" (retv[3]) :);
 
     return 0;
+}
+
+int smc64(smc_t type, smc_serv_t servId, uint16_t funId, int argc, uint64_t *argv,
+          uint16_t sessId, uint16_t clientId, uint16_t osId, uint64_t retv[])
+{
+    return smc(64, type, servId, funId, argc, argv, sessId, clientId, osId, retv);
+}
+
+int smc32(smc_t type, smc_serv_t servId, uint16_t funId, int argc, uint64_t *argv,
+          uint16_t sessId, uint16_t clientId, uint16_t osId, uint64_t retv[])
+{
+    return smc(32, type, servId, funId, argc, argv, sessId, clientId, osId, retv);
 }

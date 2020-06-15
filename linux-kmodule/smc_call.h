@@ -32,4 +32,7 @@ typedef enum smc_serv_type {
 int smc64(smc_t type, smc_serv_t servId, uint16_t funId, int argc, uint64_t *argv,
           uint16_t sessId, uint16_t clientId, uint16_t osId, uint64_t retv[]);
 
+int smc32(smc_t type, smc_serv_t servId, uint16_t funId, int argc, uint64_t *argv,
+          uint16_t sessId, uint16_t clientId, uint16_t osId, uint64_t retv[]);
+
 #endif
