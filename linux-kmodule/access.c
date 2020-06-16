@@ -96,7 +96,7 @@ struct file_operations scull_sngl_fops = {
 
 static struct scull_dev scull_u_device;
 static int scull_u_count;	/* initialized to 0 by default */
-//static uid_t scull_u_owner;	/* initialized to 0 by default */
+static uid_t scull_u_owner;	/* initialized to 0 by default */
 //static spinlock_t scull_u_lock = SPIN_LOCK_UNLOCKED;
 static struct mutex *u_mutex;
 static uint8_t u_mutex_init_done = 0;
@@ -115,10 +115,9 @@ static int scull_u_open(struct inode *inode, struct file *filp)
 		u_mutex_init_done = 1;
 	}
 	mutex_lock(u_mutex);
-#if 0
 	if (scull_u_count && 
-			(scull_u_owner != current->uid) &&  /* allow user */
-			(scull_u_owner != current->euid) && /* allow whoever did su */
+			(scull_u_owner != current->cred->uid.val) &&  /* allow user */
+			(scull_u_owner != current->cred->euid.val) && /* allow whoever did su */
 			!capable(CAP_DAC_OVERRIDE)) { /* still allow root */
 		//spin_unlock(&scull_u_lock);
 		mutex_unlock(u_mutex);
@@ -126,8 +125,8 @@ static int scull_u_open(struct inode *inode, struct file *filp)
 	}
 
 	if (scull_u_count == 0)
-		scull_u_owner = current->uid; /* grab it */
-#endif
+		scull_u_owner = current->cred->uid.val; /* grab it */
+
 	scull_u_count++;
 	//spin_unlock(&scull_u_lock);
 	mutex_unlock(u_mutex);
@@ -174,18 +173,17 @@ struct file_operations scull_user_fops = {
 
 static struct scull_dev scull_w_device;
 static int scull_w_count;	/* initialized to 0 by default */
-//static uid_t scull_w_owner;	/* initialized to 0 by default */
+static uid_t scull_w_owner;	/* initialized to 0 by default */
 static DECLARE_WAIT_QUEUE_HEAD(scull_w_wait);
 //static spinlock_t scull_w_lock = SPIN_LOCK_UNLOCKED;
 
 static inline int scull_w_available(void)
 {
-#if 0
 	return scull_w_count == 0 ||
-		scull_w_owner == current->uid ||
-		scull_w_owner == current->euid ||
+		scull_w_owner == current->cred->uid.val ||
+		scull_w_owner == current->cred->euid.val ||
 		capable(CAP_DAC_OVERRIDE);
-#endif
+
 	return 0;
 }
 
@@ -209,10 +207,10 @@ static int scull_w_open(struct inode *inode, struct file *filp)
 		//spin_lock(&scull_w_lock);
 		mutex_lock(w_mutex);
 	}
-#if 0
+
 	if (scull_w_count == 0)
-		scull_w_owner = current->uid; /* grab it */
-#endif
+		scull_w_owner = current->cred->uid.val; /* grab it */
+
 	scull_w_count++;
 	//spin_unlock(&scull_w_lock);
 	mutex_unlock(w_mutex);

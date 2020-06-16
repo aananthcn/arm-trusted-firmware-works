@@ -28,6 +28,8 @@
 #include <linux/cdev.h>
 #include <asm/uaccess.h>
 
+#include <linux/sched/signal.h>
+
 #include "scull.h"		/* local definitions */
 
 struct scull_pipe {
@@ -181,10 +183,10 @@ static int scull_getwritespace(struct scull_pipe *dev, struct file *filp)
 		if (spacefree(dev) == 0)
 			schedule();
 		finish_wait(&dev->outq, &wait);
-#if 0
+
 		if (signal_pending(current))
 			return -ERESTARTSYS; /* signal: tell the fs layer to handle it */
-#endif
+
 		//if (down_interruptible(&dev->sem))
 		//	return -ERESTARTSYS;
 		mutex_unlock(&dev->mutex);
