@@ -53,6 +53,7 @@ MODULE_AUTHOR("Alessandro Rubini, Jonathan Corbet, Aananth CN");
 MODULE_LICENSE("Dual BSD/GPL");
 
 struct scull_dev *scull_devices;	/* allocated in scull_init_module */
+static struct class *scull_class;
 
 
 /*
@@ -610,10 +611,14 @@ void scull_cleanup_module(void)
 	/* Get rid of our char dev entries */
 	if (scull_devices) {
 		for (i = 0; i < scull_nr_devs; i++) {
+			dev_t device = MKDEV(scull_major, scull_minor+i);
+
 			scull_trim(scull_devices + i);
 			cdev_del(&scull_devices[i].cdev);
+			device_destroy(scull_class, device);
 		}
 		kfree(scull_devices);
+		class_destroy(scull_class);
 	}
 
 #ifdef SCULL_DEBUG /* use proc only if debugging */
@@ -633,6 +638,7 @@ void scull_cleanup_module(void)
 /*
  * Set up the char_dev structure for this device.
  */
+#define DEVICE_NAME "smccdev"
 static void scull_setup_cdev(struct scull_dev *dev, int index)
 {
 	int err, devno = MKDEV(scull_major, scull_minor + index);
@@ -642,8 +648,13 @@ static void scull_setup_cdev(struct scull_dev *dev, int index)
 	dev->cdev.ops = &scull_fops;
 	err = cdev_add (&dev->cdev, devno, 1);
 	/* Fail gracefully if need be */
-	if (err)
+	if (err) {
 		printk(KERN_NOTICE "Error %d adding scull%d", err, index);
+	}
+
+	if (IS_ERR(device_create(scull_class, NULL, devno, NULL, "%s%d", DEVICE_NAME, index))) {
+		printk(KERN_NOTICE "Error %d while creating device %s%d", err, DEVICE_NAME, index);
+	}
 }
 
 
@@ -680,11 +691,15 @@ int scull_init_module(void)
 	}
 	memset(scull_devices, 0, scull_nr_devs * sizeof(struct scull_dev));
 
+	/* create device class */
+	if (IS_ERR(scull_class = class_create(THIS_MODULE, "chardrv"))) {
+		printk(KERN_NOTICE "Error creating class");
+	}
+
     /* Initialize each device. */
 	for (i = 0; i < scull_nr_devs; i++) {
 		scull_devices[i].quantum = scull_quantum;
 		scull_devices[i].qset = scull_qset;
-		//init_MUTEX(&scull_devices[i].sem);
 		mutex_init(&scull_devices[i].mutex);
 		scull_setup_cdev(&scull_devices[i], i);
 	}
