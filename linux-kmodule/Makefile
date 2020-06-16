@@ -1,7 +1,13 @@
 
-obj-m := smcdev.o
+obj-m := smccdev.o
 
-smcdev-objs := smc_dev.o pipe.o access.o smc_call.o
+EXTRA_CFLAGS=-I$(PWD)/smclib
+
+smccdev-objs := \
+	smccdev/main.o \
+	smccdev/pipe.o \
+	smccdev/access.o \
+	smclib/smc_call.o
 
 KERNEL_DIR ?= /home/aananth/projects/rpi3-tf-a/linux
 COMPILER ?= /opt/tools/aarch64-none-linux/bin/aarch64-none-linux-gnu-
