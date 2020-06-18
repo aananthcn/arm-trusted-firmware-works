@@ -6,3 +6,4 @@
 .tmp*
 *.symvers
 *.order
+*.tmp

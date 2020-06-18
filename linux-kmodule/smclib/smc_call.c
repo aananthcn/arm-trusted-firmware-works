@@ -77,6 +77,8 @@ int smc(int bit, smc_t type, smc_serv_t servId, uint16_t funId, int argc, uint64
     printk(KERN_NOTICE "x0_reg = 0x%016llX\n", x0_reg);
 
     /* AArch64 assembly instructions - before SMC call */
+    asm("STP X4, X5, [SP, #-16]!"); /* push X4, X5 to stack */
+    asm("STP X6, X7, [SP, #-16]!"); /* push X6, X7 to stack */
     asm("MOV X7, %[x_7]" :: [x_7] "r" (x7_reg));
     asm("MOV X6, %[x_6]" :: [x_6] "r" (x6_reg));
     asm("MOV X5, %[x_5]" :: [x_5] "r" (smc_args[4]));
@@ -94,6 +96,8 @@ int smc(int bit, smc_t type, smc_serv_t servId, uint16_t funId, int argc, uint64
     asm("MOV %[x_1], X1" : [x_1] "=r" (retv[1]) :);
     asm("MOV %[x_2], X2" : [x_2] "=r" (retv[2]) :);
     asm("MOV %[x_3], X3" : [x_3] "=r" (retv[3]) :);
+    asm("LDP X6, X7, [SP], #16"); /* pop X6, X7 to stack */
+    asm("LDP X4, X5, [SP], #16"); /* pop X4, X5 to stack */
 
     return 0;
 }
