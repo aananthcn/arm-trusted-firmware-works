@@ -38,6 +38,17 @@ cp arch/arm64/boot/dts/broadcom/bcm2710-rpi-3-b-plus.dtb <mount-point>/boot/
 make ARCH=arm64 CROSS_COMPILE=/opt/tools/aarch64-none-linux/bin/aarch64-none-linux-gnu- INSTALL_MOD_PATH=<mount-point>/rootfs modules_install
 
 
+Enable KVM
+----------
+make ARCH=arm64 CROSS_COMPILE=/opt/tools/aarch64-none-linux/bin/aarch64-none-linux-gnu- menuconfig
+(or)
+make ARCH=arm64 CROSS_COMPILE=/opt/tools/aarch64-none-linux/bin/aarch64-none-linux-gnu- nconfig
+
+> Use the arrow keys to navigate menuconfig. Find 'Virtualisation' and enable it using the space key. 
+> Press enter to access a menu of Virtualisation options. Enable all of them using the space key. 
+> Use the Tab key to select 'Save' and press enter, and then save the configuration as .config.
+
+
 Step 3: Building the firmware (64 bit) for kernels that support PSCI
 --------------------------------------------------------------------
 cd -
